@@ -25,6 +25,38 @@ export const auth_controllers = async (fastify: FastifyInstance) => {
             catch (error) {
                 reply.code(401).send({ error: "Login failed" });
             }
+        },
+
+        async logout_handler(request: FastifyRequest, reply: FastifyReply) {
+            try {
+                auth_service.logout_user(request.user._id.toString());
+                reply.send({ message: "Logged out successfully" });
+            }
+            catch (error) {
+                reply.code(400).send({ error: "Logout failed" });
+            }
+        },
+
+        async forgot_password_handler(request: FastifyRequest, reply: FastifyReply) {
+            const { email } = request.body as { email: string };
+            try {
+                const token = await auth_service.forgot_password(email);
+                reply.send({ reset_token: token });
+            }
+            catch (error) {
+                reply.code(400).send({ error: "Failed to initiate reset" });
+            }
+        },
+
+        async reset_password_handler(request: FastifyRequest, reply: FastifyReply) {
+            const { token, new_password } = request.body as { token: string, new_password: string };
+            try {
+                await auth_service.reset_password(token, new_password);
+                reply.send({ message: "Password updated "});
+            }
+            catch {
+                reply.code(400).send({ error: "Failed to reset password" });
+            }
         }
     };
 }

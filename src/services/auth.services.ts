@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { User } from "../models/user.models";
 import { create_jwt_utils } from "../utils/jwt.utils";
 
@@ -29,6 +30,44 @@ export function create_auth_service(fastify: FastifyInstance) {
             await user.save();
 
             return { access_token, refresh_token };
+        },
+
+        async logout_user(user_id: string) {
+            const user = await User.findById(user_id);
+            if (user) {
+                user.refresh_token = null as unknown as string;
+                await user.save();
+            }
+        },
+
+        async forgot_password(email: string) {
+            const user = await User.findOne({ email });
+            if (!user) throw new Error("Email not found");
+
+            const token = crypto.randomBytes(32).toString("hex");
+            const expiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+            user.reset_password_token = token;
+            user.reset_password_expires = expiry;
+
+            await user.save();
+
+            return token;
+        },
+
+        async reset_password(token: string, new_password: string) {
+            const user = await User.findOne({
+                reset_password_token: token,
+                reset_password_expires: { $gt: new Date() }
+            });
+
+            if (!user) throw new Error("Token expired or invalid");
+
+            const hash = await bcrypt.hash(new_password, 10);
+            user.password = hash;
+            user.reset_password_token = null as unknown as string;
+            user.reset_password_expires = null as unknown as Date;
+            await user.save();
         }
     };
 }
