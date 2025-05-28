@@ -68,6 +68,28 @@ export function create_auth_service(fastify: FastifyInstance) {
             user.reset_password_token = null as unknown as string;
             user.reset_password_expires = null as unknown as Date;
             await user.save();
+        },
+
+        async refresh_token(refresh_token: string) {
+            try {
+                const payload = jwt.verify_refresh_token(refresh_token) as { id: string };
+
+                const user = await User.findById(payload.id);
+                if (!user || user.refresh_token !== refresh_token) {
+                    throw new Error("Invalid refresh token");
+                }
+
+                const new_access_token = jwt.generate_access_token({ id: user._id });
+                const new_refresh_token = jwt.generate_refresh_token({ id: user._id });
+
+                user.refresh_token = new_refresh_token;
+                await user.save();
+
+                return { access_token: new_access_token, refresh_token: new_refresh_token };
+            }
+            catch (error) {
+                throw new Error("Invalid refresh token");
+            }
         }
     };
 }

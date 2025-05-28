@@ -5,11 +5,13 @@ import connect_db from "./config/db.config";
 import auth_routes from "./routes/auth.routes";
 import user_routes from "./routes/user.routes";
 import auth_plugin from "./config/auth.config";
+import valkey_plugin from "./config/valkey.config";
 
 const server = fastify({ logger: true });
 
 server.register(env_plugin);
 server.register(connect_db);
+server.register(valkey_plugin);
 server.register(auth_plugin);
 
 server.register(cors, {

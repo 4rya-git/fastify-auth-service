@@ -8,7 +8,8 @@ const env_schema = {
         PORT: { type: 'number', default: 8000 },
         MONGO_URI: { type: 'string', minLength: 1 },
         JWT_SECRET: { type: 'string', minLength: 1 },
-        JWT_REFRESH_SECRET: { type: 'string', minLength: 1 }
+        JWT_REFRESH_SECRET: { type: 'string', minLength: 1 },
+        VALKEY_SERVICE_URI: { type: 'string' }
     }
 };
 

@@ -1,12 +1,13 @@
 import { FastifyRequest, FastifyReply, FastifyInstance } from "fastify";
 import { create_auth_service } from "../services/auth.services";
+import { ref } from "process";
 
 export const auth_controllers = async (fastify: FastifyInstance) => {
     const auth_service = create_auth_service(fastify);
 
     return {
         async register_handler(request: FastifyRequest, reply: FastifyReply) {
-            const { email, password } = request.body as {email: string; password: string; };
+            const { email, password } = request.body as { email: string; password: string; };
             try {
                 const user = await auth_service.register_user(email, password);
                 return reply.code(201).send({ id: user._id, email: user.email });
@@ -17,7 +18,7 @@ export const auth_controllers = async (fastify: FastifyInstance) => {
         },
 
         async login_handler(request: FastifyRequest, reply: FastifyReply) {
-            const { email, password } = request.body as {email: string; password: string; };
+            const { email, password } = request.body as { email: string; password: string; };
             try {
                 const tokens = await auth_service.login_user(email, password);
                 reply.code(200).send(tokens);
@@ -29,7 +30,14 @@ export const auth_controllers = async (fastify: FastifyInstance) => {
 
         async logout_handler(request: FastifyRequest, reply: FastifyReply) {
             try {
-                auth_service.logout_user(request.user._id.toString());
+                const token = request.headers.authorization?.split(" ")[1];
+
+                if (token) {
+                    const ttl = 15 * 60;
+                    await fastify.valkey.setex(`bl_token:${token}`, ttl, '1');
+                }
+
+                await auth_service.logout_user(request.user._id.toString());
                 reply.send({ message: "Logged out successfully" });
             }
             catch (error) {
@@ -52,11 +60,17 @@ export const auth_controllers = async (fastify: FastifyInstance) => {
             const { token, new_password } = request.body as { token: string, new_password: string };
             try {
                 await auth_service.reset_password(token, new_password);
-                reply.send({ message: "Password updated "});
+                reply.send({ message: "Password updated" });
             }
             catch {
                 reply.code(400).send({ error: "Failed to reset password" });
             }
+        },
+
+        async refresh_token_handler(request: FastifyRequest, reply: FastifyReply) {
+            const { refresh_token } = request.body as { refresh_token: string };
+            const { access_token, refresh_token: new_refresh_token } = await auth_service.refresh_token(refresh_token);
+            reply.send({ access_token, refresh_token: new_refresh_token });
         }
     };
 }

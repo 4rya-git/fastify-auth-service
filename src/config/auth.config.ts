@@ -13,9 +13,15 @@ export default fp(async (fastify: FastifyInstance) => {
             }
 
             const token = auth_header.split(" ")[1];
+
+            const blacklisted = await fastify.valkey.get(`bl_token:${token}`);
+            if (blacklisted) {
+                throw new Error("Token is blacklisted");
+            }
+
             const jwt = create_jwt_utils({
-                    JWT_SECRET: fastify.config.JWT_SECRET,
-                    JWT_REFRESH_SECRET: fastify.config.JWT_REFRESH_SECRET,
+                JWT_SECRET: fastify.config.JWT_SECRET,
+                JWT_REFRESH_SECRET: fastify.config.JWT_REFRESH_SECRET,
             });
 
             const payload = jwt.verify_access_token(token) as { id: string };
